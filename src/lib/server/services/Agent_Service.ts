@@ -21,10 +21,22 @@ export class Agent_Service {
 
     /**
      * @param set - Transaction data set
-     * @returns set - Resulting transaction data/confirmation
+     * @returns object - { payload, server_signature, hash }
+     * 
+     * FLOW INPUT TRANSACTION:
+     * 1. Validate input data (items, qty, prices).
+     * 2. Save preliminary data to local DB (status: Pending).
+     * 3. Compute Hash of the critical data.
+     * 4. SIGN the hash using SERVER'S PRIVATE KEY.
+     * 5. Return { payload, server_signature, hash } to Frontend.
+     * 
+     * NEXT STEP (Frontend):
+     * - Frontend sends this payload + signature to Smart Contract.
+     * - Smart Contract verifies signature (to ensure data origin).
+     * - Smart Contract calls Oracle to verify prices.
      */
     async input_Transaction(set: any): Promise<any> {
-        // TODO: Process new transaction input
+        // TODO: Implement logic + Server Signing mechanism
         return null;
     }
 
@@ -48,16 +60,21 @@ export class Agent_Service {
 
     /**
      * @param tx_Hash - Transaction Hash from Blockchain
+     * 
+     * CALLED AFTER: Smart Contract execution & Oracle check is success.
      */
     async finalize_Transaction(tx_Hash: string): Promise<void> {
-        // TODO: Finalize transaction after blockchain confirmation
+        // TODO: Finalize transaction
+        // 1. Verify tx_Hash exists on chain.
+        // 2. Update local DB status to 'Committed'.
+        // 3. Link tx_Hash to the transaction record.
     }
 
     /**
-     * Note: sign_Transaction usually happens on Client (MetaMask), 
-     * but listed in Agent_Service in diagram.
+     * Helper to sign data using Server's Private Key.
      */
-    async sign_Transaction(): Promise<void> {
-        // TODO: Implement signing logic (or delegate to client)
+    async sign_Transaction(dataHash: string): Promise<string> {
+        // TODO: Implement cryptographic signing
+        return "0xServerSignature...";
     }
 }

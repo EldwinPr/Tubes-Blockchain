@@ -29,3 +29,5 @@ vite.config.ts.timestamp-*
 *.db
 
 /../generated/prisma
+
+/../generated/prisma

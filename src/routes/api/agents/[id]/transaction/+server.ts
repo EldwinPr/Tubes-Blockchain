@@ -1,10 +1,40 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { Agent_Service } from '$lib/server/services/Agent_Service';
 
-export const POST: RequestHandler = async ({ params }) => {
-    return json({ message: `POST /api/agents/${params.id}/transaction placeholder` });
+const agentService = new Agent_Service();
+
+// POST: Input Transaction
+// Returns: { success: true, data: { payload, signature, hash } }
+export const POST: RequestHandler = async ({ request, params }) => {
+    try {
+        const body = await request.json();
+        // Inject agent ID from URL params into the body/set if needed
+        const transactionData = { ...body, agent_Id: params.id };
+        
+        // This will call the service which handles DB save AND Signing
+        const result = await agentService.input_Transaction(transactionData);
+        
+        return json({ success: true, data: result });
+    } catch (error) {
+        return json({ success: false, error: String(error) }, { status: 500 });
+    }
 };
 
-export const PUT: RequestHandler = async ({ params }) => {
-    return json({ message: `PUT /api/agents/${params.id}/transaction placeholder` });
+// PUT: Finalize Transaction
+// Body: { tx_Hash: string }
+export const PUT: RequestHandler = async ({ request, params }) => {
+    try {
+        const { tx_Hash } = await request.json();
+        if (!tx_Hash) {
+            return json({ success: false, message: 'tx_Hash is required' }, { status: 400 });
+        }
+        
+        // Finalize transaction (sync status with blockchain)
+        await agentService.finalize_Transaction(tx_Hash);
+        
+        return json({ success: true, message: 'Transaction finalized' });
+    } catch (error) {
+        return json({ success: false, error: String(error) }, { status: 500 });
+    }
 };

@@ -1,0 +1,81 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  user_Id         String        @id @default(uuid())
+  name            String
+  wallet_Address  String
+  email           String        @unique
+  password        String
+  role            String        // 'Agent', 'Auditor', 'Customer'
+  
+  // Relations
+  agentTransactions   Transaction[] @relation("AgentRelation")
+  auditedTransactions Transaction[] @relation("AuditorRelation")
+}
+
+model Transaction {
+  transaction_Id  String        @id @default(uuid())
+  agent_Id        String
+  auditor_Id      String?
+  total_Amt       Float
+  status          String        // 'unverified', 'pending', 'paid'
+  suspicion_Flag  Boolean       @default(false)
+
+  // Relations
+  agent           User          @relation("AgentRelation", fields: [agent_Id], references: [user_Id])
+  auditor         User?         @relation("AuditorRelation", fields: [auditor_Id], references: [user_Id])
+  details         Transaction_Details[]
+  commission      Commission?
+  metadata        Transaction_Metadata?
+}
+
+model Transaction_Details {
+  transaction_Details_Id String @id @default(uuid())
+  transaction_Id         String
+  item_Id                String
+  qty                    Int
+  price_At_Time          Float
+
+  // Relations
+  transaction            Transaction @relation(fields: [transaction_Id], references: [transaction_Id])
+  item                   Item        @relation(fields: [item_Id], references: [item_Id])
+}
+
+model Item {
+  item_Id     String                @id @default(uuid())
+  name        String
+  price       Float
+  stock       Int
+  details     Transaction_Details[]
+}
+
+model Commission {
+  transaction_Id String      @id
+  commission_Amt Float
+  is_Given       Boolean     @default(false)
+
+  // Relations
+  transaction    Transaction @relation(fields: [transaction_Id], references: [transaction_Id])
+}
+
+model Transaction_Metadata {
+  transaction_Id String      @id
+  agent_Address  String
+  stored_Hash    String
+  total_Amt      Float
+  is_Paid        Boolean     @default(false)
+  commission_Amt Float
+
+  // Relations
+  transaction    Transaction @relation(fields: [transaction_Id], references: [transaction_Id])
+}
