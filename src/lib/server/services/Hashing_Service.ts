@@ -6,8 +6,11 @@ export class Hashing_Service {
      * @returns string - The generated hash
      */
     static generate_Transaction_Hash(set: any): string {
-        // TODO: Implement hash generation logic
-        return "";
+        // Convert the input set to a JSON string for consistent hashing
+        const data = typeof set === 'string' ? set : JSON.stringify(set);
+        // Use Node.js crypto module for SHA-256 hash
+        const crypto = require('crypto');
+        return crypto.createHash('sha256').update(data).digest('hex');
     }
 
     /**
@@ -16,7 +19,7 @@ export class Hashing_Service {
      * @returns boolean - True if hashes match
      */
     static compare_Hash(hash1: string, hash2: string): boolean {
-        // TODO: Implement hash comparison logic
-        return false;
+        // Simple equality check for hashes
+        return hash1 === hash2;
     }
 }
