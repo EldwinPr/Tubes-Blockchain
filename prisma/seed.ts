@@ -5,15 +5,20 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('Sedang mengisi database dengan data Alat Berat...');
 
+  // GANTI ALAMAT INI DENGAN ALAMAT METAMASK ANDA YANG ASLI
+  const MY_WALLET_ADDRESS = '0xF62Ffd20CEc2afD3B4fe83feB4588a4C0D3e9066'; 
+
   // 1. Buat Agent
   await prisma.user.upsert({
     where: { email: 'agent@example.com' },
-    update: {},
+    update: {
+        wallet_Address: MY_WALLET_ADDRESS // Update wallet jika user sudah ada
+    },
     create: {
       name: 'Agent Alat Berat (Budi)',
       email: 'agent@example.com',
       password: 'password123',
-      wallet_Address: '0x1234567890123456789012345678901234567890',
+      wallet_Address: MY_WALLET_ADDRESS,
       role: 'Agent'
     }
   });
