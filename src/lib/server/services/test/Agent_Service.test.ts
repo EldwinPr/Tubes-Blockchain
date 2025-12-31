@@ -54,4 +54,14 @@ describe('Agent_Service', () => {
     expect(items.length).toBeGreaterThan(0);
     expect(items[0]).toHaveProperty('item_Id');
   });
+  it('get_Transactions should return a list of transactions for a valid agent_Id', async () => {
+    const agentService = new Agent_Service();
+    const transactions = await agentService.get_Transactions(TEST_AGENT_ID);
+    expect(Array.isArray(transactions)).toBe(true);
+    // Optionally check structure if you expect at least one transaction
+    if (transactions.length > 0) {
+      expect(transactions[0]).toHaveProperty('transaction_Id');
+      expect(transactions[0]).toHaveProperty('agent_Id', TEST_AGENT_ID);
+    }
+  });
 });

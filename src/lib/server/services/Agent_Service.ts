@@ -6,17 +6,20 @@ const prisma = new PrismaClient();
 
 export class Agent_Service {
     /**
-     * @param uuid - Agent UUID
-     * @returns array - List of transactions
+     * Retrieve all transactions for a given agent UUID.
+     * @param agent_Id - Agent UUID
+     * @returns array - List of transactions for the agent
      */
-    async get_Transactions(uuid: string): Promise<any[]> {
-        // TODO: Retrieve transactions for the agent
-        return [];
+    async get_Transactions(agent_Id: string): Promise<any[]> {
+        return prisma.transaction.findMany({
+            where: { agent_Id },
+        });
     }
 
     /**
-     * @param uuid - Item or Category UUID? (Assumed based on diagram)
-     * @returns any - List of items
+     * Get items from the database.
+     * @param item_Id - (Optional) Item UUID. If provided, returns a single item. If omitted, returns all items.
+     * @returns A single item object if item_Id is provided, or an array of items if not.
      */
     async get_Items(item_Id?: string): Promise<any> {
         if (item_Id) {
