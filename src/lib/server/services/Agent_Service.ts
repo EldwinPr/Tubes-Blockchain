@@ -1,8 +1,14 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, type Item, type Transaction, type User, Prisma } from '@prisma/client';
 import { Hashing_Service } from './Hashing_Service';
+import crypto from 'node:crypto';
+import type { TransactionInput, TransactionResult } from '$lib/types';
+
 const prisma = new PrismaClient();
 
-// Placeholder for Agent_Service based on Class Diagram
+// Define a type for Transaction with included details
+type TransactionWithDetails = Prisma.TransactionGetPayload<{
+    include: { details: { include: { item: true } } }
+}>;
 
 export class Agent_Service {
     /**
@@ -10,7 +16,7 @@ export class Agent_Service {
      * @param agent_Id - Agent UUID
      * @returns array - List of transactions for the agent
      */
-    async get_Transactions(agent_Id: string): Promise<any[]> {
+    async get_Transactions(agent_Id: string): Promise<TransactionWithDetails[]> {
         return prisma.transaction.findMany({
             where: { agent_Id },
             include: {
@@ -29,7 +35,7 @@ export class Agent_Service {
      * @param item_Id - (Optional) Item UUID. If provided, returns a single item. If omitted, returns all items.
      * @returns A single item object if item_Id is provided, or an array of items if not.
      */
-    async get_Items(item_Id?: string): Promise<any> {
+    async get_Items(item_Id?: string): Promise<Item | Item[] | null> {
         if (item_Id) {
             // Retrieve a single item by item_Id
             return prisma.item.findUnique({
@@ -42,74 +48,74 @@ export class Agent_Service {
     }
 
     /**
-     * @param set - Transaction data set
-     * @returns object - { payload, server_signature, hash }
+     * @param set - Transaction data set { agent_Id, items: [{ item_Id, qty }] }
+     * @returns object - { payload, hash }
      * 
      * FLOW INPUT TRANSACTION:
      * 1. Validate input data (items, qty, prices).
-     * 2. Save preliminary data to local DB (status: Pending).
-     * 3. Compute Hash of the critical data.
-     * 4. SIGN the hash using SERVER'S PRIVATE KEY.
-     * 5. Return { payload, server_signature, hash } to Frontend.
-     * 
-     * NEXT STEP (Frontend):
-     * - Frontend sends this payload + signature to Smart Contract.
-     * - Smart Contract verifies signature (to ensure data origin).
-     * - Smart Contract calls Oracle to verify prices.
+     * 2. Generate Transaction ID and Timestamp.
+     * 3. Compute Hash of the critical data (Payload).
+     * 4. Save data to local DB (status: unverified).
+     * 5. Return { payload, hash } to Frontend.
      */
-    async input_Transaction(set: any): Promise<any> {
-        // 1. Get item price from Item table using get_Items
-        const item = await this.get_Items(set.item_Id);
-        if (!item) {
-            throw new Error('Item not found');
-        }
-        const price_At_Time = item.price;
-        const qty = set.qty;
-        const total_Amt = qty * price_At_Time;
+    async input_Transaction(set: TransactionInput): Promise<TransactionResult> {
+        let total_Amt = 0;
+        let total_Qty = 0;
+        const transaction_Details_Data = [];
 
-        // 2. Create Transaction (status: Pending, suspicion_Flag: false, auditor_id: null)
-        const transaction = await prisma.transaction.create({
+        // 1. Calculate Totals and Prepare Details
+        for (const itemInput of set.items) {
+            const item = await prisma.item.findUnique({ where: { item_Id: itemInput.item_Id } });
+            if (!item) {
+                throw new Error(`Item not found: ${itemInput.item_Id}`);
+            }
+            const lineTotal = itemInput.qty * item.price;
+            total_Amt += lineTotal;
+            total_Qty += itemInput.qty;
+
+            transaction_Details_Data.push({
+                item_Id: itemInput.item_Id,
+                qty: itemInput.qty,
+                price_At_Time: item.price
+            });
+        }
+
+        // 2. Generate Metadata
+        const transaction_Id = crypto.randomUUID();
+        const timestamp = Date.now();
+
+        // 3. Create Payload
+        const payload = {
+            transaction_Id,
+            total_Amt,
+            total_Qty,
+            timestamp
+        };
+
+        // 4. Generate Hash
+        const hash = Hashing_Service.generate_Transaction_Hash(payload);
+
+        // 5. Save to DB (using the pre-generated ID and Hash)
+        await prisma.transaction.create({
             data: {
+                transaction_Id: transaction_Id,
                 agent_Id: set.agent_Id,
                 auditor_Id: null,
                 total_Amt: total_Amt,
-                status: 'Pending',
-                suspicion_Flag: false
+                total_Qty: total_Qty,
+                hash: hash,
+                status: 'unverified',
+                suspicion_Flag: false,
+                details: {
+                    create: transaction_Details_Data
+                }
             }
-        });
-
-        // 3. Create Transaction_Details
-        const transactionDetail = await prisma.transaction_Details.create({
-            data: {
-                transaction_Id: transaction.transaction_Id,
-                item_Id: set.item_Id,
-                qty: qty,
-                price_At_Time: price_At_Time
-            }
-        });
-
-        // 4. Prepare payload
-        const payload = {
-            items: [{ itemId: set.item_Id, qty, price: price_At_Time }],
-            total_Amt
-        };
-
-        // 5. Generate a hash as the 'signature' using Hashing_Service
-        const { transaction_Id } = transaction;
-        const signature = Hashing_Service.generate_Transaction_Hash({
-            transaction_Id,
-            agent_Id: set.agent_Id,
-            total_Amt,
-            item_Id: set.item_Id,
-            qty,
-            price_At_Time
         });
 
         // 6. Return response
         return {
-            transaction_Id: transaction.transaction_Id,
             payload,
-            signature
+            hash
         };
     }
 
@@ -118,7 +124,7 @@ export class Agent_Service {
      * @returns array - List of commissions
      */
     async get_Commissions(uuid: string): Promise<any[]> {
-        // TODO: Retrieve commissions for the agent
+        // TODO: Retrieve commissions for the agent (returning empty array for now)
         return [];
     }
 
@@ -126,7 +132,7 @@ export class Agent_Service {
      * @param uuid - Agent UUID
      * @returns object - User details (name, wallet, role)
      */
-    async get_Wallet(uuid: string): Promise<any> {
+    async get_Wallet(uuid: string): Promise<Partial<User> | null> {
         return prisma.user.findUnique({
             where: { user_Id: uuid },
             select: { 
@@ -148,12 +154,4 @@ export class Agent_Service {
         // 2. Update local DB status to 'Committed'.
         // 3. Link tx_Hash to the transaction record.
     }
-
-    // /**
-    //  * Helper to sign data using Server's Private Key.
-    //  */
-    // async sign_Transaction(dataHash: string): Promise<string> {
-    //     // TODO: Implement cryptographic signing
-    //     return "0xServerSignature...";
-    // }
 }

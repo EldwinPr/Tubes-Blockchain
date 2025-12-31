@@ -13,19 +13,37 @@ export const POST: RequestHandler = async ({ request, params }) => {
         if (!params.id || typeof params.id !== 'string' || params.id.length > 64) {
             return json({ success: false, error: 'Invalid or missing agent ID' }, { status: 400 });
         }
-        // Validate required fields
-        if (!body.total_amt || !body.item_id || !body.qty) {
-            return json({ success: false, error: 'Missing required fields: total_amt, item_id, qty' }, { status: 400 });
+        
+        // Validate items array
+        if (!body.items || !Array.isArray(body.items) || body.items.length === 0) {
+            return json({ success: false, error: 'Missing or invalid items array' }, { status: 400 });
         }
-        // Inject agent ID from URL params into the body/set if needed
-        const transactionData = { ...body, agent_Id: params.id };
 
-        // This will call the service which handles DB save AND Signing
-        const result = await agentService.input_Transaction(transactionData);
+        // Prepare data for service
+        const transactionData = { 
+            agent_Id: params.id,
+            items: body.items 
+        };
 
-        return json({ success: true, data: result });
+        // Call service
+        try {
+            const result = await agentService.input_Transaction(transactionData);
+            return json({ success: true, data: result });
+        } catch (error: unknown) {
+            console.error('Transaction Input Error:', error);
+            
+            const errorMessage = error instanceof Error ? error.message : String(error);
+
+            // Check for known errors (e.g., Item not found)
+            if (errorMessage.includes('Item not found')) {
+                 return json({ success: false, error: errorMessage }, { status: 404 });
+            }
+
+            // Default server error
+            return json({ success: false, error: 'Internal Server Error: ' + errorMessage }, { status: 500 });
+        }
     } catch (error) {
-        return json({ success: false, error: String(error) }, { status: 500 });
+        return json({ success: false, error: 'Invalid Request Body' }, { status: 400 });
     }
 };
 

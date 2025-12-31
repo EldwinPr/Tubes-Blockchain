@@ -24,19 +24,21 @@ model User {
 }
 
 model Transaction {
-  transaction_Id  String        @id @default(uuid())
-  agent_Id        String
-  auditor_Id      String?
-  total_Amt       Float
-  status          String        // 'unverified', 'pending', 'paid'
-  suspicion_Flag  Boolean       @default(false)
+  transaction_Id     String        @id @default(uuid())
+  agent_Id           String
+  auditor_Id         String?
+  total_Amt          Float
+  total_Qty          Int
+  hash               String
+  status             String        // 'unverified', 'pending', 'paid'
+  suspicion_Flag     Boolean       @default(false)
+  commission_Amt     Float         @default(0)
+  is_Commission_Paid Boolean       @default(false)
 
   // Relations
   agent           User          @relation("AgentRelation", fields: [agent_Id], references: [user_Id])
   auditor         User?         @relation("AuditorRelation", fields: [auditor_Id], references: [user_Id])
   details         Transaction_Details[]
-  commission      Commission?
-  metadata        Transaction_Metadata?
 }
 
 model Transaction_Details {
@@ -57,25 +59,4 @@ model Item {
   price       Float
   stock       Int
   details     Transaction_Details[]
-}
-
-model Commission {
-  transaction_Id String      @id
-  commission_Amt Float
-  is_Given       Boolean     @default(false)
-
-  // Relations
-  transaction    Transaction @relation(fields: [transaction_Id], references: [transaction_Id])
-}
-
-model Transaction_Metadata {
-  transaction_Id String      @id
-  agent_Address  String
-  stored_Hash    String
-  total_Amt      Float
-  is_Paid        Boolean     @default(false)
-  commission_Amt Float
-
-  // Relations
-  transaction    Transaction @relation(fields: [transaction_Id], references: [transaction_Id])
 }

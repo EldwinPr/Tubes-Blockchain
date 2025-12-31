@@ -7,24 +7,35 @@
 *   **Method:** `GET`
 *   **Desc:** Mengambil daftar barang sebagai referensi harga bagi Agen.
 
-### b. Input Transaction (Sign Payload)
+### b. Input Transaction
 *   **URL:** `/api/agents/[id]/transaction`
 *   **Method:** `POST`
+*   **Body:**
+    ```json
+    {
+      "items": [
+        { "item_Id": "uuid-1", "qty": 2 }
+      ]
+    }
+    ```
 *   **Proses (Sequence):** 
-    1. Generate Hash.
-    2. Server Sign Hash.
-    3. Insert ke DB Lokal (Status: Pending).
+    1. Server mengambil harga terbaru dari DB.
+    2. Server menghitung `total_Amt` dan `total_Qty`.
+    3. Generate `transaction_Id` (UUID) & `timestamp`.
+    4. Generate Keccak-256 `hash` dari payload.
+    5. Simpan ke DB lokal dengan status `unverified`.
 *   **Response:**
     ```json
     {
       "success": true,
       "data": {
-        "transaction_Id": "uuid",
         "payload": { 
-            "items": [{ "itemId": "uuid-1", "qty": 2, "price": 10000 }], 
-            "total_Amt": 20000
+            "transaction_Id": "uuid",
+            "total_Amt": 20000,
+            "total_Qty": 2,
+            "timestamp": 1735651200000
         },
-        "signature": "0xServerSignature..."
+        "hash": "0x..."
       }
     }
     ```

@@ -1,16 +1,22 @@
-// Placeholder for Hashing_Service based on Class Diagram
-import crypto from 'node:crypto';
+// Hashing Service using Keccak256 (Ethereum Standard)
+import { ethers } from 'ethers';
 
 export class Hashing_Service {
     /**
-     * @param set - Data set to be hashed
-     * @returns string - The generated hash
+     * @param set - Data set to be hashed (Object or String)
+     * @returns string - The generated Keccak-256 hash (0x...)
      */
-    static generate_Transaction_Hash(set: any): string {
-        // Convert the input set to a JSON string for consistent hashing
-        const data = typeof set === 'string' ? set : JSON.stringify(set);
-        // Use Node.js crypto module for SHA-256 hash
-        return crypto.createHash('sha256').update(data).digest('hex');
+    static generate_Transaction_Hash(set: unknown): string {
+        // 1. Serialize data to JSON string if it's an object
+        // using 'json-stable-stringify' or similar is better for strict determinism,
+        // but for now JSON.stringify is the standard we are using.
+        const dataString = typeof set === 'string' ? set : JSON.stringify(set);
+        
+        // 2. Convert string to UTF-8 Bytes
+        const bytes = ethers.toUtf8Bytes(dataString);
+
+        // 3. Keccak-256 Hash
+        return ethers.keccak256(bytes);
     }
 
     /**
@@ -19,7 +25,7 @@ export class Hashing_Service {
      * @returns boolean - True if hashes match
      */
     static compare_Hash(hash1: string, hash2: string): boolean {
-        // Simple equality check for hashes
-        return hash1 === hash2;
+        // Case-insensitive comparison for 0x hashes
+        return hash1.toLowerCase() === hash2.toLowerCase();
     }
 }
