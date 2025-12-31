@@ -119,8 +119,10 @@ export class Agent_Service {
      * @returns string - Wallet address
      */
     async get_Wallet(uuid: string): Promise<string> {
-        // TODO: Retrieve agent's wallet address
-        return "";
+        return prisma.user.findUnique({
+            where: { user_Id: uuid },
+            select: { wallet_Address: true }
+        }).then(user => user ? user.wallet_Address : '');
     }
 
     /**
@@ -135,11 +137,11 @@ export class Agent_Service {
         // 3. Link tx_Hash to the transaction record.
     }
 
-    /**
-     * Helper to sign data using Server's Private Key.
-     */
-    async sign_Transaction(dataHash: string): Promise<string> {
-        // TODO: Implement cryptographic signing
-        return "0xServerSignature...";
-    }
+    // /**
+    //  * Helper to sign data using Server's Private Key.
+    //  */
+    // async sign_Transaction(dataHash: string): Promise<string> {
+    //     // TODO: Implement cryptographic signing
+    //     return "0xServerSignature...";
+    // }
 }

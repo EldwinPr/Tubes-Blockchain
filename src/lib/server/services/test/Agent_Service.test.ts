@@ -64,4 +64,13 @@ describe('Agent_Service', () => {
       expect(transactions[0]).toHaveProperty('agent_Id', TEST_AGENT_ID);
     }
   });
+  it('get_Wallet should return the correct wallet address for a valid user_Id', async () => {
+    const agentService = new Agent_Service();
+    // NOTE: Replace with a valid user_Id and expected wallet address from your seeded database
+    const TEST_USER_ID = TEST_AGENT_ID;
+    const expectedWallet = '0x1234567890123456789012345678901234567890'; // Example, update as needed
+    const wallet = await agentService.get_Wallet(TEST_USER_ID);
+    expect(typeof wallet).toBe('string');
+    expect(wallet).toBe(expectedWallet);
+  });
 });
