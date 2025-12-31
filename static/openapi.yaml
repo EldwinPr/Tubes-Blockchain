@@ -6,6 +6,101 @@ info:
 servers:
   - url: http://localhost:5173
 paths:
+  /api/agents/{id}/transactions:
+    get:
+      summary: Get all transactions for an agent
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Agent UUID
+      responses:
+        '200':
+          description: List of transactions for the agent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        transaction_Id:
+                          type: string
+                        agent_Id:
+                          type: string
+                        auditor_Id:
+                          type: string
+                        total_Amt:
+                          type: number
+                        status:
+                          type: string
+                        suspicion_Flag:
+                          type: boolean
+        '400':
+          description: Missing agent ID
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  error:
+                    type: string
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  error:
+                    type: string
+  /api/agents/{id}/wallet:
+    get:
+      summary: Get the wallet address for an agent
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Agent UUID
+      responses:
+        '200':
+          description: Wallet address found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      wallet_Address:
+                        type: string
+        '404':
+          description: Wallet not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  error:
+                    type: string
   /api/agents/{id}/transaction:
     post:
       summary: Create a new transaction for an agent
