@@ -178,7 +178,7 @@
                 message = { text: 'Please sign in MetaMask...', type: 'info' };
                 
                 // Contract Config
-                const CONTRACT_ADDRESS = "0x7F9f155585b4438d4Ed7A8b877792cfE8B09B834"; 
+                const CONTRACT_ADDRESS = "0xc439E04a2415EcB0fd593B29Ec2600AA056374bA"; 
                 const ABI = [
                     "function record_sale(tuple(string transactionId, uint256 totalAmt, uint256 totalQty, uint256 timestamp) payload, string hash) external"
                 ];

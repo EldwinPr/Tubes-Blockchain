@@ -13,7 +13,8 @@ const agentService = new Agent_Service();
 const CONTRACT_ABI = [
     "event SaleRecorded(string transactionId, address indexed agent, string hash)",
     "function verify_transaction(string transactionId, string oracleHash, address oracleWallet) external",
-    "function update_payment(string transactionId) external"
+    "function update_payment(string transactionId) external",
+    "function sales(string) view returns (address agent, tuple(string transactionId, uint256 totalAmt, uint256 totalQty, uint256 timestamp) payload, string txHash, bool isVerified, bool isPaid)"
 ];
 
 export class Blockchain_Service {
@@ -91,8 +92,6 @@ export class Blockchain_Service {
 
                 if (currentBlock > lastProcessedBlock) {
                     // Query logs from last processed block + 1 to current block
-                    // We use a small overlap or exact range. 
-                    // To be safe against race conditions, we can start from lastProcessedBlock.
                     const events = await this.contract.queryFilter("SaleRecorded", lastProcessedBlock + 1, currentBlock);
 
                     for (const event of events) {
@@ -136,9 +135,31 @@ export class Blockchain_Service {
 
             console.log(`[Oracle] DB Data    -> Hash: ${dbData.hash}, Agent: ${dbData.agent_Wallet_Address}`);
 
-            // 2. Submit "Truth" to Blockchain for ON-CHAIN comparison
+            // 2. Check if ALREADY verified on-chain (Idempotency)
+            const currentChainState = await this.contract.sales(transactionId);
+            const isAlreadyVerified = currentChainState[3]; // .isVerified
+
+            if (isAlreadyVerified) {
+                console.log(`[Oracle] Transaction ${transactionId} is ALREADY verified on-chain. Syncing DB...`);
+                await agentService.finalize_Transaction(transactionId);
+                return;
+            }
+
+            // 3. Submit "Truth" to Blockchain for ON-CHAIN comparison
             console.log(`[Oracle] Submitting DB Hash and Wallet for on-chain comparison...`);
-            await this.verify_Transaction_OnChain(transactionId, dbData.hash, dbData.agent_Wallet_Address);
+            console.log(`[Oracle] Verification DISABLED for debugging.`);
+            /*
+            const verificationPassed = await this.verify_Transaction_OnChain(transactionId, dbData.hash, dbData.agent_Wallet_Address);
+
+            if (verificationPassed) {
+                // Finalize in DB (Update status to 'pending') ONLY if chain verification passed
+                await agentService.finalize_Transaction(transactionId);
+            } else {
+                console.warn(`[Oracle] On-Chain Verification FAILED (Checked Storage). Database status NOT updated.`);
+            }
+            */
+
+        } catch (error) {
 
         } catch (error) {
             console.error("[Oracle] Error processing event:", error);
@@ -147,19 +168,30 @@ export class Blockchain_Service {
 
     /**
      * Submits the database truth to the Smart Contract.
-     * The Contract will perform the comparison.
+     * Returns true if the contract storage says isVerified = true.
      */
-    async verify_Transaction_OnChain(transactionId: string, dbHash: string, dbWallet: string): Promise<string> {
+    async verify_Transaction_OnChain(transactionId: string, dbHash: string, dbWallet: string): Promise<boolean> {
         try {
-            const tx = await this.contract.verify_transaction(transactionId, dbHash, dbWallet);
+            console.log(`[Oracle] Sending verification for ${transactionId}...`);
+            
+            // Gas Overrides for Amoy stability
+            const tx = await this.contract.verify_transaction(transactionId, dbHash, dbWallet, {
+                gasLimit: 500000,
+                maxFeePerGas: ethers.parseUnits('100', 'gwei'),
+                maxPriorityFeePerGas: ethers.parseUnits('50', 'gwei')
+            });
+
             console.log(`[Oracle] Transaction sent: ${tx.hash}. Waiting for confirmation...`);
             await tx.wait();
-            console.log(`[Oracle] Transaction confirmed. On-chain comparison complete.`);
+            console.log(`[Oracle] Transaction confirmed.`);
+
+            // Direct check of storage state
+            const saleData = await this.contract.sales(transactionId);
+            const isVerified = saleData[3]; 
             
-            // Finalize in DB (Update status to 'pending')
-            await agentService.finalize_Transaction(transactionId);
-            
-            return tx.hash;
+            console.log(`[Oracle] Storage Check: isVerified = ${isVerified}`);
+            return isVerified;
+
         } catch (error) {
             console.error("[Oracle] Failed to submit verification transaction:", error);
             throw error;
