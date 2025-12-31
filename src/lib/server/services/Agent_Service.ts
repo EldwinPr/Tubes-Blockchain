@@ -144,14 +144,17 @@ export class Agent_Service {
     }
 
     /**
-     * @param tx_Hash - Transaction Hash from Blockchain
-     * 
-     * CALLED AFTER: Smart Contract execution & Oracle check is success.
+     * @param transaction_Id - Transaction UUID
+     * @param tx_Hash - (Optional) The on-chain hash if we want to store the verification tx hash, 
+     *                  but mainly this updates status to 'pending'.
      */
-    async finalize_Transaction(tx_Hash: string): Promise<void> {
-        // TODO: Finalize transaction
-        // 1. Verify tx_Hash exists on chain.
-        // 2. Update local DB status to 'Committed'.
-        // 3. Link tx_Hash to the transaction record.
+    async finalize_Transaction(transaction_Id: string): Promise<void> {
+        await prisma.transaction.update({
+            where: { transaction_Id },
+            data: {
+                status: 'pending' // Update from 'unverified' to 'pending' (Verified by Oracle)
+            }
+        });
+        console.log(`[Agent Service] Transaction ${transaction_Id} finalized to 'pending'.`);
     }
 }

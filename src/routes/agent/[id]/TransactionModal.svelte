@@ -79,6 +79,46 @@
         }
     }
 
+    async function switchNetwork() {
+        if (!window.ethereum) return;
+        const AMOY_CHAIN_ID = '0x13882'; // 80002 in hex
+
+        try {
+            await window.ethereum.request({
+                method: 'wallet_switchEthereumChain',
+                params: [{ chainId: AMOY_CHAIN_ID }],
+            });
+        } catch (switchError: any) {
+            // This error code 4902 indicates that the chain has not been added to MetaMask.
+            if (switchError.code === 4902) {
+                try {
+                    await window.ethereum.request({
+                        method: 'wallet_addEthereumChain',
+                        params: [
+                            {
+                                chainId: AMOY_CHAIN_ID,
+                                chainName: 'Polygon Amoy Testnet',
+                                rpcUrls: ['https://rpc.ankr.com/polygon_amoy'],
+                                nativeCurrency: {
+                                    name: 'POL',
+                                    symbol: 'POL', 
+                                    decimals: 18
+                                },
+                                blockExplorerUrls: ['https://amoy.polygonscan.com/']
+                            },
+                        ],
+                    });
+                } catch (addError) {
+                    console.error("Failed to add network", addError);
+                    throw new Error("Failed to add Polygon Amoy network");
+                }
+            } else {
+                console.error("Failed to switch network", switchError);
+                throw new Error("Failed to switch to Polygon Amoy");
+            }
+        }
+    }
+
     function addToCart() {
         if (!selectedItemId || quantity <= 0) return;
         const item = items.find(i => i.item_Id === selectedItemId);
@@ -118,6 +158,9 @@
         message = { text: 'Processing...', type: 'info' };
 
         try {
+            // Ensure we are on Amoy Network
+            await switchNetwork();
+
             const itemsPayload = cart.map(c => ({ item_Id: c.item_Id, qty: c.qty }));
             const response = await fetch(`/api/agents/${agentId}/transaction`, {
                 method: 'POST',
@@ -128,14 +171,46 @@
             const result = await response.json();
 
             if (result.success) {
-                const { hash } = result.data;
-                message = { text: 'Success! Hash: ' + hash.slice(0, 10) + '...', type: 'success' };
+                const { payload, hash } = result.data;
+                console.log("Server Hash:", hash);
+                
+                // 3. Interact with Smart Contract
+                message = { text: 'Please sign in MetaMask...', type: 'info' };
+                
+                // Contract Config
+                const CONTRACT_ADDRESS = "0x7F9f155585b4438d4Ed7A8b877792cfE8B09B834"; 
+                const ABI = [
+                    "function record_sale(tuple(string transactionId, uint256 totalAmt, uint256 totalQty, uint256 timestamp) payload, string hash) external"
+                ];
+
+                const provider = new ethers.BrowserProvider(window.ethereum);
+                const signer = await provider.getSigner();
+                const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+
+                // Prepare Payload Tuple [id, amt, qty, time]
+                const payloadTuple = [
+                    payload.transaction_Id,
+                    BigInt(payload.total_Amt),
+                    BigInt(payload.total_Qty),
+                    BigInt(payload.timestamp)
+                ];
+
+                console.log("Sending to Chain:", payloadTuple, hash);
+
+                // Send Transaction
+                const tx = await contract.record_sale(payloadTuple, hash);
+                message = { text: 'Transaction Sent! Waiting for confirmation...', type: 'info' };
+                
+                await tx.wait();
+
+                // Success
+                message = { text: 'Success! Recorded on Blockchain.', type: 'success' };
                 cart = [];
                 setTimeout(() => {
                     onSuccess();
                     onClose();
                     message = { text: '', type: '' };
-                }, 1500);
+                }, 2000);
             } else {
                 message = { text: 'Error: ' + result.error, type: 'error' };
             }
@@ -157,7 +232,7 @@
         <div class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-gray-100 overflow-hidden flex flex-col max-h-[90vh]">
             <div class="bg-blue-600 p-6 text-white flex justify-between items-center shrink-0">
                 <h2 class="text-xl font-bold">New Sale Transaction</h2>
-                <button onclick={onClose} class="text-white/80 hover:text-white">
+                <button onclick={onClose} class="text-white/80 hover:text-white" aria-label="Close">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
@@ -213,7 +288,7 @@
                                         <td class="p-3 text-center">{item.qty}</td>
                                         <td class="p-3 text-right font-bold">{formatCurrency(item.price * item.qty)}</td>
                                         <td class="p-3 text-center">
-                                            <button onclick={() => removeFromCart(i)} class="text-red-500 hover:bg-red-50 p-1 rounded transition">
+                                            <button onclick={() => removeFromCart(i)} class="text-red-500 hover:bg-red-50 p-1 rounded transition" aria-label="Remove item">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                                 </svg>
