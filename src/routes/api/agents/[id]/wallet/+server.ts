@@ -11,11 +11,11 @@ export const GET: RequestHandler = async ({ params }) => {
         return json({ success: false, error: 'Missing agent ID' }, { status: 400 });
     }
     try {
-        const wallet = await agentService.get_Wallet(agent_Id);
-        if (!wallet) {
+        const walletData = await agentService.get_Wallet(agent_Id);
+        if (!walletData) {
             return json({ success: false, error: 'Wallet not found' }, { status: 404 });
         }
-        return json({ success: true, data: { wallet_Address: wallet } });
+        return json({ success: true, data: walletData });
     } catch (error) {
         return json({ success: false, error: String(error) }, { status: 500 });
     }

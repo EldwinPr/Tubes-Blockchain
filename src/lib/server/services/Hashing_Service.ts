@@ -1,4 +1,5 @@
 // Placeholder for Hashing_Service based on Class Diagram
+import crypto from 'node:crypto';
 
 export class Hashing_Service {
     /**
@@ -9,7 +10,6 @@ export class Hashing_Service {
         // Convert the input set to a JSON string for consistent hashing
         const data = typeof set === 'string' ? set : JSON.stringify(set);
         // Use Node.js crypto module for SHA-256 hash
-        const crypto = require('crypto');
         return crypto.createHash('sha256').update(data).digest('hex');
     }
 

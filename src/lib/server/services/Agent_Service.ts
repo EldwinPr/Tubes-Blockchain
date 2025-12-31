@@ -13,6 +13,13 @@ export class Agent_Service {
     async get_Transactions(agent_Id: string): Promise<any[]> {
         return prisma.transaction.findMany({
             where: { agent_Id },
+            include: {
+                details: {
+                    include: {
+                        item: true
+                    }
+                }
+            }
         });
     }
 
@@ -117,13 +124,17 @@ export class Agent_Service {
 
     /**
      * @param uuid - Agent UUID
-     * @returns string - Wallet address
+     * @returns object - User details (name, wallet, role)
      */
-    async get_Wallet(uuid: string): Promise<string> {
+    async get_Wallet(uuid: string): Promise<any> {
         return prisma.user.findUnique({
             where: { user_Id: uuid },
-            select: { wallet_Address: true }
-        }).then(user => user ? user.wallet_Address : '');
+            select: { 
+                name: true,
+                wallet_Address: true,
+                role: true
+            }
+        });
     }
 
     /**

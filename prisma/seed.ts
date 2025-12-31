@@ -8,12 +8,14 @@ async function main() {
   // 1. Buat Agent
   await prisma.user.upsert({
     where: { email: 'agent@example.com' },
-    update: {},
+    update: {
+      wallet_Address: '0xF62Ffd20CEc2afD3B4fe83feB4588a4C0D3e9066'
+    },
     create: {
       name: 'Agent Alat Berat (Budi)',
       email: 'agent@example.com',
       password: 'password123',
-      wallet_Address: '0x1234567890123456789012345678901234567890',
+      wallet_Address: '0xF62Ffd20CEc2afD3B4fe83feB4588a4C0D3e9066',
       role: 'Agent'
     }
   });
