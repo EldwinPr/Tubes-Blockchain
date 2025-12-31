@@ -9,12 +9,20 @@ const agentService = new Agent_Service();
 export const POST: RequestHandler = async ({ request, params }) => {
     try {
         const body = await request.json();
+        // Validate agent ID from params
+        if (!params.id || typeof params.id !== 'string' || params.id.length > 64) {
+            return json({ success: false, error: 'Invalid or missing agent ID' }, { status: 400 });
+        }
+        // Validate required fields
+        if (!body.total_amt || !body.item_id || !body.qty) {
+            return json({ success: false, error: 'Missing required fields: total_amt, item_id, qty' }, { status: 400 });
+        }
         // Inject agent ID from URL params into the body/set if needed
         const transactionData = { ...body, agent_Id: params.id };
-        
+
         // This will call the service which handles DB save AND Signing
         const result = await agentService.input_Transaction(transactionData);
-        
+
         return json({ success: true, data: result });
     } catch (error) {
         return json({ success: false, error: String(error) }, { status: 500 });

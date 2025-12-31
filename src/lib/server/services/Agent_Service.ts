@@ -1,3 +1,7 @@
+import { PrismaClient } from '@prisma/client';
+import { Hashing_Service } from './Hashing_Service';
+const prisma = new PrismaClient();
+
 // Placeholder for Agent_Service based on Class Diagram
 
 export class Agent_Service {
@@ -14,9 +18,11 @@ export class Agent_Service {
      * @param uuid - Item or Category UUID? (Assumed based on diagram)
      * @returns any - List of items
      */
-    async get_Items(uuid: string): Promise<any> {
-        // TODO: Retrieve available items
-        return null;
+    async get_Items(item_Id: string): Promise<any> {
+        // Retrieve a single item by item_Id
+        return prisma.item.findUnique({
+            where: { item_Id }
+        });
     }
 
     /**
@@ -36,8 +42,59 @@ export class Agent_Service {
      * - Smart Contract calls Oracle to verify prices.
      */
     async input_Transaction(set: any): Promise<any> {
-        // TODO: Implement logic + Server Signing mechanism
-        return null;
+        // 1. Get item price from Item table using get_Items
+        const item = await this.get_Items(set.item_Id);
+        if (!item) {
+            throw new Error('Item not found');
+        }
+        const price_At_Time = item.price;
+        const qty = set.qty;
+        const total_Amt = qty * price_At_Time;
+
+        // 2. Create Transaction (status: Pending, suspicion_Flag: false, auditor_id: null)
+        const transaction = await prisma.transaction.create({
+            data: {
+                agent_Id: set.agent_Id,
+                auditor_Id: null,
+                total_Amt: total_Amt,
+                status: 'Pending',
+                suspicion_Flag: false
+            }
+        });
+
+        // 3. Create Transaction_Details
+        const transactionDetail = await prisma.transaction_Details.create({
+            data: {
+                transaction_Id: transaction.transaction_Id,
+                item_Id: set.item_Id,
+                qty: qty,
+                price_At_Time: price_At_Time
+            }
+        });
+
+        // 4. Prepare payload
+        const payload = {
+            items: [{ itemId: set.item_Id, qty, price: price_At_Time }],
+            total_Amt
+        };
+
+        // 5. Generate a hash as the 'signature' using Hashing_Service
+        const { transaction_Id } = transaction;
+        const signature = Hashing_Service.generate_Transaction_Hash({
+            transaction_Id,
+            agent_Id: set.agent_Id,
+            total_Amt,
+            item_Id: set.item_Id,
+            qty,
+            price_At_Time
+        });
+
+        // 6. Return response
+        return {
+            transaction_Id: transaction.transaction_Id,
+            payload,
+            signature
+        };
     }
 
     /**
