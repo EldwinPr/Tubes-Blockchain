@@ -33,4 +33,25 @@ describe('Agent_Service', () => {
     expect(result.payload.items[0]).toHaveProperty('qty');
     expect(result.payload.items[0]).toHaveProperty('price');
   });
+
+  it('get_Items should return the correct item for a valid item_Id', async () => {
+    const agentService = new Agent_Service();
+    const item = await agentService.get_Items(TEST_ITEM_ID);
+    expect(item).toBeDefined();
+    expect(item).toHaveProperty('item_Id', TEST_ITEM_ID);
+  });
+
+  it('get_Items should return null for an invalid item_Id', async () => {
+    const agentService = new Agent_Service();
+    const item = await agentService.get_Items('non-existent-item-id');
+    expect(item).toBeNull();
+  });
+
+  it('get_Items should return a list of items when called without item_Id', async () => {
+    const agentService = new Agent_Service();
+    const items = await agentService.get_Items();
+    expect(Array.isArray(items)).toBe(true);
+    expect(items.length).toBeGreaterThan(0);
+    expect(items[0]).toHaveProperty('item_Id');
+  });
 });

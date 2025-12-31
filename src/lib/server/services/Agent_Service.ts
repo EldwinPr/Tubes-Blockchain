@@ -18,11 +18,16 @@ export class Agent_Service {
      * @param uuid - Item or Category UUID? (Assumed based on diagram)
      * @returns any - List of items
      */
-    async get_Items(item_Id: string): Promise<any> {
-        // Retrieve a single item by item_Id
-        return prisma.item.findUnique({
-            where: { item_Id }
-        });
+    async get_Items(item_Id?: string): Promise<any> {
+        if (item_Id) {
+            // Retrieve a single item by item_Id
+            return prisma.item.findUnique({
+                where: { item_Id }
+            });
+        } else {
+            // Retrieve all items
+            return prisma.item.findMany();
+        }
     }
 
     /**
