@@ -1,0 +1,119 @@
+openapi: 3.0.3
+info:
+  title: Tubes Blockchain API
+  version: 1.0.0
+  description: API documentation for the Tubes Blockchain SvelteKit project.
+servers:
+  - url: http://localhost:5173
+paths:
+  /api/agents/{id}/transaction:
+    post:
+      summary: Create a new transaction for an agent
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Agent UUID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                item_Id:
+                  type: string
+                qty:
+                  type: integer
+                total_amt:
+                  type: number
+      responses:
+        '200':
+          description: Transaction created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      transaction_Id:
+                        type: string
+                      payload:
+                        type: object
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                itemId:
+                                  type: string
+                                qty:
+                                  type: integer
+                                price:
+                                  type: number
+                          total_Amt:
+                            type: number
+                      signature:
+                        type: string
+  /api/agents/items:
+    get:
+      summary: Get all items or a single item by item_Id
+      parameters:
+        - in: query
+          name: item_Id
+          schema:
+            type: string
+          required: false
+          description: Item UUID
+      responses:
+        '200':
+          description: List of items or a single item
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    oneOf:
+                      - type: array
+                        items:
+                          type: object
+                          properties:
+                            item_Id:
+                              type: string
+                            name:
+                              type: string
+                            price:
+                              type: number
+                            stock:
+                              type: integer
+                      - type: object
+                        properties:
+                          item_Id:
+                            type: string
+                          name:
+                            type: string
+                          price:
+                            type: number
+                          stock:
+                            type: integer
+        '404':
+          description: Item not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  error:
+                    type: string

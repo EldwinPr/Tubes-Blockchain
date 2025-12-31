@@ -25,14 +25,36 @@ npm run dev
 npm run dev -- --open
 ```
 
-## Building
 
-To create a production version of your app:
+## Database Setup
 
-```sh
-npm run build
-```
+To set up and run the database:
 
-You can preview the production build with `npm run preview`.
+1. Run migrations to create tables:
+	```sh
+	npx prisma migrate deploy
+	```
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+2. (Optional) Seed the database with initial data:
+	```sh
+	npx prisma db seed
+	```
+
+3. To view and edit the database in a browser UI:
+	```sh
+	npx prisma studio
+	```
+
+## API Documentation
+
+To view the interactive API documentation (Swagger UI):
+
+1. Start the development server:
+	```sh
+	npm run dev
+	```
+2. Open your browser and go to:
+	```
+	http://localhost:5173/docs.html
+	```
+	This will display the Swagger UI for your API, reading from openapi.yaml.
