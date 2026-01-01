@@ -31,12 +31,22 @@ export const POST: RequestHandler = async ({ request, params }) => {
             return json({ success: true, data: result });
         } catch (error: unknown) {
             console.error('Transaction Input Error:', error);
-            
+
             const errorMessage = error instanceof Error ? error.message : String(error);
 
             // Check for known errors (e.g., Item not found)
             if (errorMessage.includes('Item not found')) {
                  return json({ success: false, error: errorMessage }, { status: 404 });
+            }
+
+            // Check for agent not found error
+            if (errorMessage.includes('Agent not found')) {
+                return json({ success: false, error: errorMessage }, { status: 404 });
+            }
+
+            // Check for user not an agent error
+            if (errorMessage.includes('is not an agent')) {
+                return json({ success: false, error: errorMessage }, { status: 403 });
             }
 
             // Default server error

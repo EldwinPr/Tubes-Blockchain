@@ -59,6 +59,20 @@ export class Agent_Service {
      * 5. Return { payload, hash } to Frontend.
      */
     async input_Transaction(set: TransactionInput): Promise<TransactionResult> {
+        // Validate that the agent exists
+        const agent = await prisma.user.findUnique({
+            where: { user_Id: set.agent_Id }
+        });
+
+        if (!agent) {
+            throw new Error(`Agent not found: ${set.agent_Id}`);
+        }
+
+        // Verify agent has the correct role
+        if (agent.role !== 'Agent') {
+            throw new Error(`User with ID ${set.agent_Id} is not an agent`);
+        }
+
         let total_Amt = 0;
         let total_Qty = 0;
         const transaction_Details_Data = [];

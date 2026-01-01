@@ -12,19 +12,21 @@
 
     async function fetchAgents() {
         try {
-            // We can reuse the test DB API or create a small internal one.
-            // For now, I'll fetch via a direct query to help the user.
-            const res = await fetch('/api/test-db'); // Assuming this returns users if it exists
-            // If /api/test-db doesn't work, we'll need to create a simple endpoint.
-            // Let's assume we can fetch them from a standard user list if it existed.
-            // Since there isn't one, I'll provide a placeholder or use the seed data we know.
-            
-            // Simulation/Hardcoded for prototype ease if API fails
-            agents = [
-                { user_Id: '84df4d88-4e27-4559-96c3-03d24636fa57', name: 'Agent Alat Berat (Budi)', email: 'agent@example.com' }
-            ];
+            const res = await fetch('/api/users');
+            if (res.ok) {
+                const data = await res.json();
+                if (data.success) {
+                    agents = data.data;
+                } else {
+                    console.error('Failed to fetch agents:', data.error);
+                }
+            } else {
+                console.error('Failed to fetch agents:', res.status, res.statusText);
+            }
         } catch (e) {
-            console.error(e);
+            console.error('Error fetching agents:', e);
+            // Fallback to empty array
+            agents = [];
         } finally {
             isLoading = false;
         }
