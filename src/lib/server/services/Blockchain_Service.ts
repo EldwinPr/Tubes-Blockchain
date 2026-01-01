@@ -133,8 +133,6 @@ export class Blockchain_Service {
                 return;
             }
 
-            console.log(`[Oracle] DB Data    -> Hash: ${dbData.hash}, Agent: ${dbData.agent_Wallet_Address}`);
-
             // 2. Check if ALREADY verified on-chain (Idempotency)
             const currentChainState = await this.contract.sales(transactionId);
             const isAlreadyVerified = currentChainState[3]; // .isVerified
@@ -146,9 +144,6 @@ export class Blockchain_Service {
             }
 
             // 3. Submit "Truth" to Blockchain for ON-CHAIN comparison
-            console.log(`[Oracle] Submitting DB Hash and Wallet for on-chain comparison...`);
-            console.log(`[Oracle] Verification DISABLED for debugging.`);
-            /*
             const verificationPassed = await this.verify_Transaction_OnChain(transactionId, dbData.hash, dbData.agent_Wallet_Address);
 
             if (verificationPassed) {
@@ -157,9 +152,6 @@ export class Blockchain_Service {
             } else {
                 console.warn(`[Oracle] On-Chain Verification FAILED (Checked Storage). Database status NOT updated.`);
             }
-            */
-
-        } catch (error) {
 
         } catch (error) {
             console.error("[Oracle] Error processing event:", error);
@@ -189,7 +181,6 @@ export class Blockchain_Service {
             const saleData = await this.contract.sales(transactionId);
             const isVerified = saleData[3]; 
             
-            console.log(`[Oracle] Storage Check: isVerified = ${isVerified}`);
             return isVerified;
 
         } catch (error) {

@@ -98,8 +98,6 @@ contract SalesManager {
             s.isVerified = true;
             emit SaleVerificationResult(transactionId, true, "Verified");
         } else {
-            // Mismatch detected! 
-            // We DO NOT delete the record anymore, so we can debug it on-chain.
             // delete sales[transactionId]; 
             
             string memory reason = "";
