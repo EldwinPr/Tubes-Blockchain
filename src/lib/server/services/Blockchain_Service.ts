@@ -204,8 +204,19 @@ export class Blockchain_Service {
      */
     async update_Payment_Status(uuid: string): Promise<string> {
         try {
-             const tx = await this.contract.update_payment(uuid);
+             console.log(`[Payment] Updating payment status for ${uuid} on-chain...`);
+             
+             // Gas Overrides for Amoy
+             const tx = await this.contract.update_payment(uuid, {
+                gasLimit: 500000,
+                maxFeePerGas: ethers.parseUnits('100', 'gwei'),
+                maxPriorityFeePerGas: ethers.parseUnits('50', 'gwei')
+             });
+             
+             console.log(`[Payment] Transaction sent: ${tx.hash}. Waiting...`);
              await tx.wait();
+             console.log(`[Payment] Payment confirmed on-chain.`);
+             
              return tx.hash;
         } catch (error) {
             console.error("Payment Update Failed:", error);
