@@ -2,11 +2,12 @@
 
 export class Audit_Service {
     /**
-     * @param uuid - Auditor UUID or Filter UUID
      * @returns set - Set of transactions
      */
-    async get_Transactions(uuid: string): Promise<any> {
-        // TODO: Retrieve transactions for audit
+    async get_Transactions(): Promise<any> {
+        // TODO: Retrieve transactions for audit in short:
+        // if agent_Id is Null include in return (or unaudited)
+        // else if agent_Id is not Null dont return this set (already audited)
         return null;
     }
 

@@ -43,32 +43,6 @@ export class Blockchain_Service {
         this.contractAddress = process.env.CONTRACT_ADDRESS || "";
         this.contract = new ethers.Contract(this.contractAddress, CONTRACT_ABI, this.wallet);
     }
-    
-    /**
-     * Retrieves the off-chain "Truth" (Hash and Wallet Address) for a transaction.
-     * Used by the Oracle to verify data origin and integrity.
-     */
-    async get_HashWallet(transaction_Id: string): Promise<{ hash: string, agent_Wallet_Address: string } | null> {
-        const transaction = await prisma.transaction.findUnique({
-            where: { transaction_Id },
-            include: {
-                agent: {
-                    select: {
-                        wallet_Address: true
-                    }
-                }
-            }
-        });
-
-        if (!transaction) {
-            return null;
-        }
-
-        return {
-            hash: transaction.hash,
-            agent_Wallet_Address: transaction.agent.wallet_Address
-        };
-    }
 
     /**
      * Starts the Oracle Listener to watch for new Sales on the Blockchain.
@@ -118,6 +92,32 @@ export class Blockchain_Service {
         };
 
         poll();
+    }
+
+    /**
+     * Retrieves the off-chain "Truth" (Hash and Wallet Address) for a transaction.
+     * Used by the Oracle to verify data origin and integrity.
+     */
+    async get_HashWallet(transaction_Id: string): Promise<{ hash: string, agent_Wallet_Address: string } | null> {
+        const transaction = await prisma.transaction.findUnique({
+            where: { transaction_Id },
+            include: {
+                agent: {
+                    select: {
+                        wallet_Address: true
+                    }
+                }
+            }
+        });
+
+        if (!transaction) {
+            return null;
+        }
+
+        return {
+            hash: transaction.hash,
+            agent_Wallet_Address: transaction.agent.wallet_Address
+        };
     }
 
     /**
@@ -194,8 +194,35 @@ export class Blockchain_Service {
      * @returns Set - Transaction metadata from blockchain
      */
     async get_Transaction_Metadata(uuid: string): Promise<any> {
-        // TODO: Implement logic to fetch metadata from Smart Contract via ethers.js
-        return null;
+        try {
+            const result = await this.contract.sales(uuid);
+
+            // Ethers returns a Result object/array
+            const agent = result[0];
+            const payload = result[1];
+            const txHash = result[2];
+            const isVerified = result[3];
+            const isPaid = result[4];
+
+            // Format the response similar to Agent_Service input_Transaction
+            const formattedResult = {
+                agentAddress: agent,
+                isVerified,
+                isPaid,
+                payloadHash: txHash,
+                payload: {
+                    transaction_Id: payload[0],
+                    total_Amt: Number(payload[1]), // Convert BigInt to number
+                    total_Qty: Number(payload[2]), // Convert BigInt to number
+                    timestamp: Number(payload[3]) // Convert BigInt to number for timestamp
+                }
+            };
+
+            return formattedResult;
+        } catch (error) {
+            console.error("Error fetching transaction metadata:", error);
+            throw error;
+        }
     }
 
     /**
