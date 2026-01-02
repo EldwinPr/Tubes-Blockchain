@@ -34,9 +34,9 @@ export class Audit_Service {
 
     /**
      * @param uuid - Transaction UUID to check
-     * @returns boolean - True if integrity is verified
+     * @returns Object - { matches, blockchain }
      */
-    async check_Integrity(uuid: string): Promise<boolean> {
+    async check_Integrity(uuid: string): Promise<{ matches: boolean, blockchain: any }> {
         // 1. Get the transaction from the database
         const dbTransaction = await prisma.transaction.findUnique({
             where: { transaction_Id: uuid }
@@ -44,24 +44,37 @@ export class Audit_Service {
 
         if (!dbTransaction) {
             console.error(`Audit_Service: Transaction ${uuid} not found in DB.`);
-            return false;
+            return { matches: false, blockchain: null };
         }
 
         // 2. Get the transaction metadata from the blockchain
         try {
             const blockchainData = await this.blockchainService.get_Transaction_Metadata(uuid);
             
-            // 3. Compare the hashes
-            // Note: Blockchain service returns payloadHash
-            if (blockchainData && blockchainData.payloadHash === dbTransaction.hash) {
-                return true;
-            } else {
-                console.warn(`Audit_Service: Integrity check failed for ${uuid}. DB Hash: ${dbTransaction.hash}, Chain Hash: ${blockchainData?.payloadHash}`);
-                return false;
+            if (!blockchainData) {
+                return { matches: false, blockchain: null };
             }
+
+            // 3. Compare the hashes
+            // Note: blockchainData.payloadHash vs dbTransaction.hash
+            // Also we can check if it matches EXACTLY (keccak256 comparison logic is same)
+            // Using Hashing_Service here would be cleaner but direct string comparison works if both are hex strings.
+            // Let's assume standard string compare.
+            
+            const hashesMatch = blockchainData.payloadHash === dbTransaction.hash;
+
+            return {
+                matches: hashesMatch,
+                blockchain: {
+                    hash: blockchainData.payloadHash,
+                    isVerified: blockchainData.isVerified,
+                    isPaid: blockchainData.isPaid
+                }
+            };
+
         } catch (error) {
             console.error(`Audit_Service: Error fetching metadata for ${uuid} from blockchain.`, error);
-            return false;
+            return { matches: false, blockchain: null };
         }
     }
 

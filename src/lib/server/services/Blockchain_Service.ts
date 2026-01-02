@@ -196,32 +196,22 @@ export class Blockchain_Service {
     async get_Transaction_Metadata(uuid: string): Promise<any> {
         try {
             const result = await this.contract.sales(uuid);
+            
+            // If timestamp is 0, it doesn't exist
+            if (result.payload.timestamp === 0n) {
+                return null;
+            }
 
-            // Ethers returns a Result object/array
-            const agent = result[0];
-            const payload = result[1];
-            const txHash = result[2];
-            const isVerified = result[3];
-            const isPaid = result[4];
-
-            // Format the response similar to Agent_Service input_Transaction
-            const formattedResult = {
-                agentAddress: agent,
-                isVerified,
-                isPaid,
-                payloadHash: txHash,
-                payload: {
-                    transaction_Id: payload[0],
-                    total_Amt: Number(payload[1]), // Convert BigInt to number
-                    total_Qty: Number(payload[2]), // Convert BigInt to number
-                    timestamp: Number(payload[3]) // Convert BigInt to number for timestamp
-                }
+            return {
+                payloadHash: result.txHash,
+                isVerified: result.isVerified,
+                isPaid: result.isPaid,
+                agent: result.agent,
+                amount: result.payload.totalAmt
             };
-
-            return formattedResult;
         } catch (error) {
-            console.error("Error fetching transaction metadata:", error);
-            throw error;
+            console.error("Error reading contract metadata:", error);
+            return null;
         }
     }
 

@@ -70,7 +70,7 @@ export const PUT: RequestHandler = async ({ request, params }) => {
         await agentService.finalize_Transaction(tx_Hash);
         
         return json({ success: true, message: 'Transaction finalized' });
-    } catch (error) {
+    } catch (error: unknown) {
         return json({ success: false, error: String(error) }, { status: 500 });
     }
 };

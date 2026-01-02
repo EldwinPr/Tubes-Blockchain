@@ -14,28 +14,59 @@
 
     let isVerifying = $state(false);
     let auditResult: any = $state(null);
+    let isFlagging = $state(false);
+
+    $effect(() => {
+        if (isOpen) {
+            auditResult = null;
+            isVerifying = false;
+            isFlagging = false;
+        }
+    });
 
     async function checkIntegrity() {
         isVerifying = true;
         try {
-            // Placeholder for API call
-            // const res = await fetch(`/api/auditors/integrity/${transaction.transaction_Id}`);
-            // auditResult = await res.json();
+            // Real API call
+            // We use a wildcard/placeholder for auditor ID in the URL if it's not strictly needed by the backend logic yet
+            const res = await fetch(`/api/auditors/any/integrity/${transaction.transaction_Id}`);
+            const data = await res.json();
             
-            // Simulation
-            await new Promise(r => setTimeout(r, 1500));
-            auditResult = {
-                matches: true,
-                blockchain: {
-                    hash: transaction.hash,
-                    isVerified: true,
-                    isPaid: transaction.status === 'paid'
-                }
-            };
+            if (data.success) {
+                auditResult = {
+                    matches: data.isIntegrityVerified,
+                    blockchain: data.blockchainData
+                };
+            } else {
+                alert("Error: " + data.error);
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Failed to connect to audit service");
+        } finally {
+            isVerifying = false;
+        }
+    }
+
+    async function flagSuspicious() {
+        if (!confirm("Are you sure you want to flag this transaction as suspicious?")) return;
+        
+        isFlagging = true;
+        try {
+            const res = await fetch(`/api/auditors/any/flag/${transaction.transaction_Id}`, {
+                method: 'PUT'
+            });
+            const data = await res.json();
+            if (data.success) {
+                alert("Transaction flagged successfully.");
+                onClose();
+            } else {
+                alert("Failed to flag: " + data.error);
+            }
         } catch (e) {
             console.error(e);
         } finally {
-            isVerifying = false;
+            isFlagging = false;
         }
     }
 
@@ -87,28 +118,45 @@
                                 </span>
                             </div>
                             
-                            <div class="space-y-2 text-xs font-bold text-slate-600">
-                                <div class="flex justify-between">
-                                    <span>Blockchain Status</span>
-                                    <span>{auditResult.blockchain.isVerified ? 'Verified' : 'Pending'}</span>
+                            {#if auditResult.blockchain}
+                                <div class="space-y-2 text-xs font-bold text-slate-600">
+                                    <div class="flex justify-between">
+                                        <span>Blockchain Status</span>
+                                        <span>{auditResult.blockchain.isVerified ? 'Verified' : 'Pending'}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span>Payment Status</span>
+                                        <span>{auditResult.blockchain.isPaid ? 'Paid' : 'Unpaid'}</span>
+                                    </div>
                                 </div>
-                                <div class="flex justify-between">
-                                    <span>Payment Status</span>
-                                    <span>{auditResult.blockchain.isPaid ? 'Paid' : 'Unpaid'}</span>
-                                </div>
-                            </div>
+                            {:else}
+                                <p class="text-xs text-rose-600 font-bold">Transaction NOT FOUND on Blockchain.</p>
+                            {/if}
                         </div>
                     {/if}
                 </div>
 
-                <button onclick={checkIntegrity} disabled={isVerifying} 
-                    class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black py-4 rounded-2xl shadow-xl shadow-indigo-100 transition-all active:scale-95 disabled:opacity-50 flex justify-center items-center gap-2">
-                    {#if isVerifying}
-                        Querying...
-                    {:else}
-                        Compare with Blockchain
-                    {/if}
-                </button>
+                <div class="flex gap-4">
+                    <button onclick={checkIntegrity} disabled={isVerifying} 
+                        class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-black py-4 rounded-2xl shadow-xl shadow-indigo-100 transition-all active:scale-95 disabled:opacity-50 flex justify-center items-center gap-2">
+                        {#if isVerifying}
+                            Querying...
+                        {:else}
+                            Compare with Blockchain
+                        {/if}
+                    </button>
+
+                    <button onclick={flagSuspicious} disabled={isFlagging || !auditResult || auditResult.matches} 
+                        class="flex-none bg-rose-100 hover:bg-rose-200 text-rose-700 font-bold px-6 rounded-2xl transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Flag as Suspicious">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-8a2 2 0 012-2h14a2 2 0 012 2v8M3 21h18M5 10a2 2 0 012-2h14a2 2 0 012 2v8m-2 0h-5l-5 5v-5z" /> 
+                            <!-- Actually using flag icon -->
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-8a2 2 0 012-2h14a2 2 0 012 2v8M3 21h18M5 10a2 2 0 012-2h14a2 2 0 012 2v8m-2 0h-5l-5 5v-5z" style="display:none" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21V3m0 0l16 5.5-16 5.5" />
+                        </svg>
+                    </button>
+                </div>
             </div>
         </div>
     </div>

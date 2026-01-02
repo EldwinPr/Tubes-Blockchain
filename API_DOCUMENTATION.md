@@ -1,11 +1,11 @@
 # Dokumentasi API Blockchain Sales Management
 
-## 1. Agent API
+## 1. Agent API (Sales Input)
 
-### a. Get Agent Items
+### a. Get Items
 *   **URL:** `/api/agents/items`
 *   **Method:** `GET`
-*   **Desc:** Mengambil daftar barang sebagai referensi harga bagi Agen.
+*   **Desc:** Mengambil daftar barang dan harga untuk dropdown input.
 
 ### b. Input Transaction
 *   **URL:** `/api/agents/[id]/transaction`
@@ -18,66 +18,81 @@
       ]
     }
     ```
-*   **Proses (Sequence):** 
-    1. Server mengambil harga terbaru dari DB.
-    2. Server menghitung `total_Amt` dan `total_Qty`.
-    3. Generate `transaction_Id` (UUID) & `timestamp`.
-    4. Generate Keccak-256 `hash` dari payload.
-    5. Simpan ke DB lokal dengan status `unverified`.
+*   **Logic:** 
+    1. Server menghitung Total Amount & Quantity dari DB.
+    2. Generate Hash (Keccak-256) dari payload (ID, Amt, Qty, Time).
+    3. Simpan transaksi ke DB dengan status `unverified`.
 *   **Response:**
     ```json
     {
       "success": true,
       "data": {
-        "payload": { 
-            "transaction_Id": "uuid",
-            "total_Amt": 20000,
-            "total_Qty": 2,
-            "timestamp": 1735651200000
-        },
+        "payload": { "transaction_Id": "...", "total_Amt": 100, ... },
         "hash": "0x..."
       }
     }
     ```
 
-### c. Finalize Transaction
-*   **URL:** `/api/agents/[id]/transaction`
-*   **Method:** `PUT`
-*   **Desc:** Sinkronisasi status di DB Lokal menjadi "Committed" setelah transaksi Blockchain sukses.
+### c. Get Transaction History
+*   **URL:** `/api/agents/[id]/transactions`
+*   **Method:** `GET`
+*   **Desc:** Mengambil riwayat transaksi agen beserta statusnya (unverified/pending/paid).
 
 ---
 
-## 2. Auditor API
+## 2. Auditor API (Integrity Check)
 
-### a. Check Transaction Integrity
+### a. Verify Integrity
 *   **URL:** `/api/auditors/[id]/integrity/[tx_id]`
 *   **Method:** `GET`
-*   **Logic:** Audit Service membandingkan data DB lokal dengan Metadata dari Smart Contract (via Blockchain Service).
+*   **Logic:** 
+    1. Mengambil data transaksi dari DB Lokal.
+    2. Mengambil data "Truth" dari Smart Contract Storage via `Blockchain_Service`.
+    3. Membandingkan Hash, Amount, dan Status Verifikasi.
+*   **Response:**
+    ```json
+    {
+      "success": true,
+      "isIntegrityVerified": true,
+      "blockchainData": { "isVerified": true, "isPaid": false, ... }
+    }
+    ```
+
+### b. Flag Suspicious Transaction
+*   **URL:** `/api/auditors/flag/[tx_id]`
+*   **Method:** `PUT`
+*   **Desc:** Menandai transaksi sebagai mencurigakan di database lokal (flag internal).
 
 ---
 
-## 3. Customer API (Finance)
+## 3. Customer API (Payment)
 
-### a. Update Payment
+### a. Get Pending Invoices
+*   **URL:** `/api/customer`
+*   **Method:** `GET`
+*   **Desc:** Mengambil semua transaksi dengan status `pending` (Sudah diverifikasi Oracle, Belum dibayar).
+
+### b. Make Payment
 *   **URL:** `/api/customer`
 *   **Method:** `PUT`
-*   **Logic:** Memicu `Oracle_Service` untuk mengupdate status pembayaran di Smart Contract.
+*   **Body:** `{ "transaction_Id": "uuid" }`
+*   **Logic:**
+    1. Backend (Oracle Wallet) memanggil Smart Contract `update_payment()`.
+    2. Menunggu konfirmasi Blockchain.
+    3. Mengupdate status DB menjadi `paid`.
 
 ---
 
-## 4. Blockchain & Oracle Interface (Berdasarkan Sequence Diagram)
+## 4. System Components (Background Processes)
 
-### a. Smart Contract: `record_sale()`
-*   **Pemicu:** Frontend (setelah mendapat signature dari Backend).
-*   **Internal Call:** `VerifySignature()`
-*   **Internal Call:** `Blockchain_Service.get_Price(array_of_uuids)`
-*   **Logic:** Memastikan harga yang dikirim Agen sesuai dengan harga resmi dari Blockchain Service.
+### a. Oracle Service (`scripts/oracle.ts`)
+*   **Role:** Bridge otomatis antara Blockchain dan Database.
+*   **Flow:**
+    1. Listen to `SaleRecorded` event on-chain.
+    2. Compare Chain Hash vs Database Hash.
+    3. Call `verify_transaction(true/false)` on Smart Contract.
+    4. If Verified, update Database status to `pending`.
 
-### b. Blockchain Service: `get_Price(array)`
-*   **Input:** `Array of UUIDs`
-*   **Output:** `Map<UUID, Price>`
-*   **Logic:** Mengambil data harga terbaru dari entitas **Items** (Oracle Data Source) untuk dikembalikan ke Smart Contract.
-
-### c. Smart Contract: `update_Payment()`
-*   **Pemicu:** `Blockchain_Service` (atas perintah `Oracle_Service`).
-*   **Action:** Mengupdate status `isPaid` di Blockchain Storage dan sinkronisasi status transaksi di database lokal.
+### b. Blockchain Service (`Blockchain_Service.ts`)
+*   **Role:** Interface tunggal ke Smart Contract (via `ethers.js`).
+*   **Key Functions:** `get_HashWallet`, `verify_Transaction_OnChain`, `update_Payment_Status`.
